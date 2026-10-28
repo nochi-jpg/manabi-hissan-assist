@@ -11,7 +11,8 @@ html = html.replace('<link rel="stylesheet" href="style.css">', '<style>\n' + sr
 for js in ['logic.js', 'app.js']:
     html = html.replace(f'<script src="{js}"></script>', '<script>\n' + src(js) + '</script>')
 html = re.sub(r"assets/[\w/]+\.(?:png|mp3)", lambda m: data(m.group(0)), html)
+# GitHub Pages 版（リポジトリの いちばん上の index.html）と Canva 版（dist/）。中身は 同じ 1ファイル
 os.makedirs(os.path.join(R, 'dist'), exist_ok=True)
-out = os.path.join(R, 'dist', 'hissan-otasuke.html')
-open(out, 'w', encoding='utf-8').write(html)
-print(out, f'{os.path.getsize(out)/1024:.0f}KB')
+for out in [os.path.join(R, 'index.html'), os.path.join(R, 'dist', 'hissan-otasuke-canva.html')]:
+    open(out, 'w', encoding='utf-8').write(html)
+    print(os.path.relpath(out, R), f'{os.path.getsize(out)/1024:.0f}KB')

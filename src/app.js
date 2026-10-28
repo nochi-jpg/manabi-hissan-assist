@@ -286,7 +286,8 @@
     }
     st.msg = m; st.inp = '';
     render(); renderBox(true);
-    if (s.assist) setTimeout(() => { if (cur() === s && !st.post) openAssist(s.assist); }, 450);
+    // 九九の表は アシストボタンを おしたときだけ（さくらんぼ計算は 自動で 出す）
+    if (s.assist && s.assist.type !== 'kuku') setTimeout(() => { if (cur() === s && !st.post) openAssist(s.assist); }, 450);
   }
   function nextInfo() {
     const s = cur(); if (!s || s.type !== 'info') return;

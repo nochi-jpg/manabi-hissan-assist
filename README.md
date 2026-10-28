@@ -4,7 +4,9 @@
 
 ## つかいかた
 - `src/index.html` をブラウザで開く（素材は `src/assets/`）
-- 配る用：`python3 tools/build.py` → `dist/hissan-otasuke.html`（画像・音を 中に入れた 1ファイル。Canva にも のせられる）
+- GitHub版：https://nochi-jpg.github.io/manabi-hissan-assist/ （リポジトリの `index.html`）
+- Canva版：`dist/hissan-otasuke-canva.html`（画像・音を 中に入れた 1ファイル）
+- どちらも `python3 tools/build.py` で 作りなおす（`src/` を 直したら かならず 実行）
 
 ## しよう（決まったこと）
 - けた数：たし算・ひき算 4けたまで／かけ算 4けた×3けたまで／わり算 4けた÷2けたまで（ノートから はみ出さない上限）
@@ -20,4 +22,4 @@
 
 ## 素材
 - キャラクター：のち（まなび堂）の絵（まなびバトルの all_cute_1 を左右反転）
-- `src/assets/` は git に入れていない（公開リポジトリのため）。効果音の ファイル名と 役割は `src/app.js` の `SE_SRC`
+- 効果音の ファイル名と 役割は `src/app.js` の `SE_SRC`
