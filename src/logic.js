@@ -7,16 +7,18 @@
   'use strict';
   const COLS = 18, ROWS = 13;
   const PL = [['一', 'いち'], ['十', 'じゅう'], ['百', 'ひゃく'], ['千', 'せん'], ['一万', 'いちまん'], ['十万', 'じゅうまん'], ['百万', 'ひゃくまん'], ['千万', 'せんまん']];
-  const pl = k => `{${PL[k][0]}|${PL[k][1]}}の{位|くらい}`;
+  const PLF = k => `{${PL[k][0]}|${PL[k][1]}}の{位|くらい}`;
+  const pl = PLF;
   const OPS = { '+': '＋', '-': '−', '*': '×', '/': '÷' };
   // [さいしょの数のけた, あとの数のけた]
   const LIM = { '+': [4, 4], '-': [4, 4], '*': [4, 3], '/': [4, 2] };
 
   const M = (id, r, c, t, k, o) => Object.assign({ id, r, c, t: String(t), k }, o || {});
   const LN = (id, r, c1, c2, o) => Object.assign({ id, r, c1, c2, k: 'L' }, o || {}); // r行の下の線
-  const dig = (S, k) => (k < S.length ? +S[S.length - 1 - k] : null);
+  // ' ' は 「数字なし」（小数で けたが たりないところ）
+  const dig = (S, k) => { const ch = S[S.length - 1 - k]; return ch === undefined || ch === ' ' ? null : +ch; };
   function putNum(arr, pre, S, r, R, o) {
-    for (let k = 0; k < S.length; k++) arr.push(M(pre + k, r, R - k, S[S.length - 1 - k], 'd', o));
+    for (let k = 0; k < S.length; k++) { const ch = S[S.length - 1 - k]; if (ch !== ' ') arr.push(M(pre + k, r, R - k, ch, 'd', o)); }
   }
 
   // ---- 式を読む ----
@@ -35,8 +37,8 @@
 
   // ---- たし算 ----
   function genAdd(a, b, S) {
-    const A = '' + a, B = '' + b, L = Math.max(A.length, B.length), R = L + 2, opc = R - L, AR = 5;
-    const base = [];
+    const A = '' + a, B = '' + b, L = Math.max(A.length, B.length), R = L + 2, opc = R - L, AR = 5, pl = S.pn || PLF;
+    const base = [], out = [];
     putNum(base, 'a', A, 3, R); putNum(base, 'b', B, 4, R);
     base.push(M('op', 4, opc, '＋', 'o')); base.push(LN('ln', 4, opc, R));
     const cpos = k => (S.carry === 'down' ? { r: AR, c: R - k, p: 'tl' } : { r: 2, c: R - k, p: 'b' });
@@ -60,26 +62,26 @@
         add.push(M('c' + (k + 1), p.r, p.c, 1, 's', { p: p.p, cl: 'cy' }));
         st.fly = { to: [p.r, p.c], t: '1' };
         st.ok = `${v}だね！ ${v % 10}を かいて、1を ${pl(k + 1)}に くりあげるよ`;
-        cin = 1;
+        cin = 1; out[k] = v % 10;
       } else if (v >= 10) {
         add.push(M('ans' + k, AR, col, v % 10, 'd', { u: 1, ans: 1 }));
         add.push(M('ans' + (k + 1), AR, col - 1, 1, 'd', { u: 1, ans: 1 }));
         st.ok = `${v}！ さいごの {位|くらい}だから、そのまま かくよ`;
-        cin = 0;
+        cin = 0; out[k] = v % 10; out[k + 1] = 1;
       } else {
         add.push(M('ans' + k, AR, col, v, 'd', { u: 1, ans: 1 }));
-        cin = 0;
+        cin = 0; out[k] = v;
       }
       if (da != null && db != null && v >= 10) { st.assist = { type: 'add', x: da, y: db, c: c0 }; st.ask = true; }
       steps.push(st);
     }
-    return { base, steps, ans: '' + (a + b) };
+    return { base, steps, ans: out.slice().reverse().join(''), R, AR };
   }
 
   // ---- ひき算 ----
   function genSub(a, b, S) {
-    const A = '' + a, B = '' + b, L = A.length, R = L + 2, opc = R - L, AR = 5;
-    const RL = ('' + (a - b)).length;
+    const A = '' + a, B = '' + b, L = A.length, R = L + 2, opc = R - L, AR = 5, pl = S.pn || PLF;
+    const RL = Math.max(('' + (Number(A) - Number(B.replace(/ /g, '0')))).length, S.minLen || 0);
     const base = [];
     putNum(base, 'a', A, 3, R); putNum(base, 'b', B, 4, R);
     base.push(M('op', 4, opc, '−', 'o')); base.push(LN('ln', 4, opc, R));
@@ -138,12 +140,14 @@
       } else { delete st.box; }
       steps.push(st);
     }
-    return { base, steps, ans: '' + (a - b) };
+    const dv = '' + (Number(A) - Number(B.replace(/ /g, '0')));
+    return { base, steps, ans: dv.padStart(RL, '0'), R, AR };
   }
 
   // ---- かけ算 ----
   function genMul(a, b, S) {
-    const A = '' + a, B = '' + b, la = A.length, lb = B.length, R = la + lb + 1, opc = R - Math.max(la, lb);
+    const A = '' + a, B = '' + b, la = A.length, lb = B.length, R = S.R || la + lb + 1, opc = S.opc || R - Math.max(la, lb);
+    const pl = S.pnB || PLF, plP = S.pnP || PLF;
     const PR = '' + a * b, P = PR.length;
     const base = [];
     putNum(base, 'a', A, 3, R); putNum(base, 'b', B, 4, R);
@@ -155,7 +159,7 @@
     if (!multi && J[0] > 0) {
       for (let t = 0; t < J[0]; t++) {
         steps.push({
-          type: 'in', say: `かける{数|かず}の ${pl(t)}が 0だから、こたえの ${pl(t)}に 0を かこう`,
+          type: 'in', say: `かける{数|かず}の ${pl(t)}が 0だから、こたえの ${plP(t)}に 0を かこう`,
           hl: [[4, R - t]], box: { r: 5, c: R - t, w: 1 }, exp: 0, max: 2,
           add: [M('z' + t, 5, R - t, 0, 'd', { u: 1, ans: 1 })],
         });
@@ -206,7 +210,7 @@
         const col = R - k, ds = colDigits[col] || [], c0 = cin, v = ds.reduce((s, d) => s + d[1], 0) + c0, last = k === P - 1;
         const hl = ds.map(d => [d[0], col]);
         if (c0) hl.push([sumRow, col]);
-        let say = k === 0 ? `さいごに {下|した}の だんを たし{算|ざん}しよう。` : `つぎは ${pl(k)}。`;
+        let say = k === 0 ? `さいごに {下|した}の だんを たし{算|ざん}しよう。` : `つぎは ${plP(k)}。`;
         const cnt = ds.length + (c0 ? 1 : 0);
         if (cnt === 0) say += `なにも ないから 0を かこう`;
         else if (cnt === 1) say += `${ds.length ? ds[0][1] : c0}を そのまま おろそう`;
@@ -229,7 +233,7 @@
         steps.push(st);
       }
     }
-    return { base, steps, ans: PR };
+    return { base, steps, ans: PR, R, AR: multi ? sumRow : 5 };
   }
 
   // ---- わり算 ----
@@ -310,6 +314,6 @@
     return plan;
   }
 
-  const api = { COLS, ROWS, OPS, LIM, parse, build, PL };
+  const api = { COLS, ROWS, OPS, LIM, parse, build, PL, PLF, M, LN, dig, putNum, genAdd, genSub, genMul, genDiv };
   if (typeof module !== 'undefined') module.exports = api; else G.HISSAN = api;
 })(typeof window !== 'undefined' ? window : globalThis);

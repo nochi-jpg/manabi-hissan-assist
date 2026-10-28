@@ -183,6 +183,28 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
 .cf{position:absolute;top:-30px;width:16px;height:22px;border-radius:3px;animation:fall 2.2s ease-in forwards}
 @keyframes fall{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(1000px) rotate(720deg)}}
 .ver{position:absolute;left:54px;bottom:6px;font:700 16px var(--fb);color:#9aa3b5}
+
+/* ---- 小数点あり版 ---- */
+.ttl:has(.badge){font-size:52px;top:14px}
+.ttl .badge{display:inline-block;vertical-align:middle;margin-left:12px;padding:6px 16px 7px;border-radius:22px;background:linear-gradient(180deg,#ff9fc8,#ec5c9b);
+  border:3px solid var(--navy);color:#fff;font-size:26px;letter-spacing:1px;text-shadow:0 2px 0 rgba(0,0,0,.25);box-shadow:0 3px 0 var(--navy);position:relative;top:-6px}
+.bpt{position:absolute;top:39px;width:11px;height:11px;border-radius:50%;background:var(--kid)}
+.mk.aux{color:#4dabf7}
+.mk.zx::after{background:#e03131;transform:rotate(-58deg)}
+.pp{transform-box:fill-box;transform-origin:center;animation:pop .5s cubic-bezier(.2,1.7,.45,1) both}
+.cand{position:absolute;width:42px;height:42px;border-radius:50%;border:3px dashed #ff3b3b;background:rgba(255,255,255,.75);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;animation:glow 1.3s ease-in-out infinite;z-index:3}
+.cand i{width:11px;height:11px;border-radius:50%;background:#ff8787}
+.cand:hover{background:#fff0f0}.cand:hover i{background:#e03131}
+.zc{position:absolute;width:50px;height:50px;border-radius:8px;border:3px dashed #ff3b3b;cursor:pointer;animation:glow 1.3s ease-in-out infinite}
+.zc:hover{background:rgba(255,59,59,.12)}
+.cand.shake,.zc.shake{animation:shake .45s}
+#sayBtns .gb.ch{width:150px}
+.dm{display:flex;flex-direction:column;gap:16px;align-items:center}
+.dm .gb{display:block;width:560px;height:auto;min-height:84px;padding:12px 20px;font-size:30px;line-height:1.5;border-radius:28px;text-align:center}
+.dm .gb small{display:block;font-size:20px;opacity:.95;line-height:1.3}
+.dm .gb rt{font-size:.4em}
+#pad .gb.pt{font-size:40px}
 </style>
 </head>
 <body>
@@ -239,16 +261,18 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
   'use strict';
   const COLS = 18, ROWS = 13;
   const PL = [['一', 'いち'], ['十', 'じゅう'], ['百', 'ひゃく'], ['千', 'せん'], ['一万', 'いちまん'], ['十万', 'じゅうまん'], ['百万', 'ひゃくまん'], ['千万', 'せんまん']];
-  const pl = k => `{${PL[k][0]}|${PL[k][1]}}の{位|くらい}`;
+  const PLF = k => `{${PL[k][0]}|${PL[k][1]}}の{位|くらい}`;
+  const pl = PLF;
   const OPS = { '+': '＋', '-': '−', '*': '×', '/': '÷' };
   // [さいしょの数のけた, あとの数のけた]
   const LIM = { '+': [4, 4], '-': [4, 4], '*': [4, 3], '/': [4, 2] };
 
   const M = (id, r, c, t, k, o) => Object.assign({ id, r, c, t: String(t), k }, o || {});
   const LN = (id, r, c1, c2, o) => Object.assign({ id, r, c1, c2, k: 'L' }, o || {}); // r行の下の線
-  const dig = (S, k) => (k < S.length ? +S[S.length - 1 - k] : null);
+  // ' ' は 「数字なし」（小数で けたが たりないところ）
+  const dig = (S, k) => { const ch = S[S.length - 1 - k]; return ch === undefined || ch === ' ' ? null : +ch; };
   function putNum(arr, pre, S, r, R, o) {
-    for (let k = 0; k < S.length; k++) arr.push(M(pre + k, r, R - k, S[S.length - 1 - k], 'd', o));
+    for (let k = 0; k < S.length; k++) { const ch = S[S.length - 1 - k]; if (ch !== ' ') arr.push(M(pre + k, r, R - k, ch, 'd', o)); }
   }
 
   // ---- 式を読む ----
@@ -267,8 +291,8 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
 
   // ---- たし算 ----
   function genAdd(a, b, S) {
-    const A = '' + a, B = '' + b, L = Math.max(A.length, B.length), R = L + 2, opc = R - L, AR = 5;
-    const base = [];
+    const A = '' + a, B = '' + b, L = Math.max(A.length, B.length), R = L + 2, opc = R - L, AR = 5, pl = S.pn || PLF;
+    const base = [], out = [];
     putNum(base, 'a', A, 3, R); putNum(base, 'b', B, 4, R);
     base.push(M('op', 4, opc, '＋', 'o')); base.push(LN('ln', 4, opc, R));
     const cpos = k => (S.carry === 'down' ? { r: AR, c: R - k, p: 'tl' } : { r: 2, c: R - k, p: 'b' });
@@ -292,26 +316,26 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
         add.push(M('c' + (k + 1), p.r, p.c, 1, 's', { p: p.p, cl: 'cy' }));
         st.fly = { to: [p.r, p.c], t: '1' };
         st.ok = `${v}だね！ ${v % 10}を かいて、1を ${pl(k + 1)}に くりあげるよ`;
-        cin = 1;
+        cin = 1; out[k] = v % 10;
       } else if (v >= 10) {
         add.push(M('ans' + k, AR, col, v % 10, 'd', { u: 1, ans: 1 }));
         add.push(M('ans' + (k + 1), AR, col - 1, 1, 'd', { u: 1, ans: 1 }));
         st.ok = `${v}！ さいごの {位|くらい}だから、そのまま かくよ`;
-        cin = 0;
+        cin = 0; out[k] = v % 10; out[k + 1] = 1;
       } else {
         add.push(M('ans' + k, AR, col, v, 'd', { u: 1, ans: 1 }));
-        cin = 0;
+        cin = 0; out[k] = v;
       }
       if (da != null && db != null && v >= 10) { st.assist = { type: 'add', x: da, y: db, c: c0 }; st.ask = true; }
       steps.push(st);
     }
-    return { base, steps, ans: '' + (a + b) };
+    return { base, steps, ans: out.slice().reverse().join(''), R, AR };
   }
 
   // ---- ひき算 ----
   function genSub(a, b, S) {
-    const A = '' + a, B = '' + b, L = A.length, R = L + 2, opc = R - L, AR = 5;
-    const RL = ('' + (a - b)).length;
+    const A = '' + a, B = '' + b, L = A.length, R = L + 2, opc = R - L, AR = 5, pl = S.pn || PLF;
+    const RL = Math.max(('' + (Number(A) - Number(B.replace(/ /g, '0')))).length, S.minLen || 0);
     const base = [];
     putNum(base, 'a', A, 3, R); putNum(base, 'b', B, 4, R);
     base.push(M('op', 4, opc, '−', 'o')); base.push(LN('ln', 4, opc, R));
@@ -370,12 +394,14 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
       } else { delete st.box; }
       steps.push(st);
     }
-    return { base, steps, ans: '' + (a - b) };
+    const dv = '' + (Number(A) - Number(B.replace(/ /g, '0')));
+    return { base, steps, ans: dv.padStart(RL, '0'), R, AR };
   }
 
   // ---- かけ算 ----
   function genMul(a, b, S) {
-    const A = '' + a, B = '' + b, la = A.length, lb = B.length, R = la + lb + 1, opc = R - Math.max(la, lb);
+    const A = '' + a, B = '' + b, la = A.length, lb = B.length, R = S.R || la + lb + 1, opc = S.opc || R - Math.max(la, lb);
+    const pl = S.pnB || PLF, plP = S.pnP || PLF;
     const PR = '' + a * b, P = PR.length;
     const base = [];
     putNum(base, 'a', A, 3, R); putNum(base, 'b', B, 4, R);
@@ -387,7 +413,7 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
     if (!multi && J[0] > 0) {
       for (let t = 0; t < J[0]; t++) {
         steps.push({
-          type: 'in', say: `かける{数|かず}の ${pl(t)}が 0だから、こたえの ${pl(t)}に 0を かこう`,
+          type: 'in', say: `かける{数|かず}の ${pl(t)}が 0だから、こたえの ${plP(t)}に 0を かこう`,
           hl: [[4, R - t]], box: { r: 5, c: R - t, w: 1 }, exp: 0, max: 2,
           add: [M('z' + t, 5, R - t, 0, 'd', { u: 1, ans: 1 })],
         });
@@ -438,7 +464,7 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
         const col = R - k, ds = colDigits[col] || [], c0 = cin, v = ds.reduce((s, d) => s + d[1], 0) + c0, last = k === P - 1;
         const hl = ds.map(d => [d[0], col]);
         if (c0) hl.push([sumRow, col]);
-        let say = k === 0 ? `さいごに {下|した}の だんを たし{算|ざん}しよう。` : `つぎは ${pl(k)}。`;
+        let say = k === 0 ? `さいごに {下|した}の だんを たし{算|ざん}しよう。` : `つぎは ${plP(k)}。`;
         const cnt = ds.length + (c0 ? 1 : 0);
         if (cnt === 0) say += `なにも ないから 0を かこう`;
         else if (cnt === 1) say += `${ds.length ? ds[0][1] : c0}を そのまま おろそう`;
@@ -461,7 +487,7 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
         steps.push(st);
       }
     }
-    return { base, steps, ans: PR };
+    return { base, steps, ans: PR, R, AR: multi ? sumRow : 5 };
   }
 
   // ---- わり算 ----
@@ -542,7 +568,7 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
     return plan;
   }
 
-  const api = { COLS, ROWS, OPS, LIM, parse, build, PL };
+  const api = { COLS, ROWS, OPS, LIM, parse, build, PL, PLF, M, LN, dig, putNum, genAdd, genSub, genMul, genDiv };
   if (typeof module !== 'undefined') module.exports = api; else G.HISSAN = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -550,9 +576,9 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
 // ===== ひっ算おたすけ君：画面 =====
 (function () {
   'use strict';
-  const H = window.HISSAN, C = 56, VER = '1.0.0';
+  const DEC = !!window.HISSAN_DEC, H = DEC ? window.HISSAN_DEC : window.HISSAN, C = 56, VER = '1.0.0';
   const $ = id => document.getElementById(id);
-  const rb = s => String(s).replace(/(\d+(?:[＋−×÷＝]\d+)+)/g, '<span class="nb">$1</span>').replace(/\{([^|}]+)\|([^}]+)\}/g, '<ruby>$1<rt>$2</rt></ruby>');
+  const rb = s => String(s).replace(/(\d+(?:\.\d+)?(?:[＋−×÷＝]\d+(?:\.\d+)?)+)/g, '<span class="nb">$1</span>').replace(/\{([^|}]+)\|([^}]+)\}/g, '<ruby>$1<rt>$2</rt></ruby>');
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
   // ---- 効果音（ファイルを差しかえるときは ここの名前を そのままに） ----
@@ -609,7 +635,11 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
   }
   function formulaMarks() {
     const m = new Map();
-    [...st.f].forEach((ch, i) => m.set('f' + i, { id: 'f' + i, r: 0, c: i + 1, t: SYM[ch] || ch, k: 'f' }));
+    let c = 0;
+    [...st.f].forEach((ch, i) => {
+      if (ch === '.') m.set('f' + i, { id: 'f' + i, r: 0, c, k: 'pt' });
+      else { c++; m.set('f' + i, { id: 'f' + i, r: 0, c, t: SYM[ch] || ch, k: 'f' }); }
+    });
     return m;
   }
 
@@ -618,7 +648,7 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
     o = o || {};
     const nw = o.nw || new Set(), late = o.late || new Set();
     let marks;
-    if (st.phase === 'formula') marks = formulaMarks();
+    if (st.phase === 'formula') marks = new Map(); // 式は 赤い わくの 中に かく
     else marks = marksAt(st.idx, !st.post);
     // 数字
     let h = '', lines = '';
@@ -626,6 +656,17 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
       if (m.k === 'L') {
         const y = (m.r + 1) * C, cls = nw.has(m.id) ? ' class="dr"' : '';
         lines += `<line${cls} x1="${m.c1 * C + 4}" y1="${y}" x2="${(m.c2 + 1) * C - 4}" y2="${y}" stroke="#1c2233" stroke-width="3.2" stroke-linecap="round"/>`;
+        continue;
+      }
+      if (m.k === 'pt') {
+        const x = (m.c + 1) * C, y = (m.r + 1) * C - 7, col = m.x ? '#adb5c4' : m.cl === 'bw' ? '#1971c2' : m.u ? '#183a8c' : '#1c2233';
+        lines += `<circle class="${nw.has(m.id) ? 'pp' : ''}" cx="${x}" cy="${y}" r="5.5" fill="${col}"/>`;
+        if (m.x) lines += `<line x1="${x - 9}" y1="${y + 9}" x2="${x + 9}" y2="${y - 9}" stroke="#e03131" stroke-width="2.6" stroke-linecap="round"/>`;
+        continue;
+      }
+      if (m.k === 'arc') {
+        const x1 = (m.c1 + 1) * C, x2 = (m.c2 + 1) * C, y = (m.r + 1) * C + 2;
+        lines += `<path class="${nw.has(m.id) ? 'dr' : ''}" d="M${x1} ${y} Q${(x1 + x2) / 2} ${y + 30} ${x2 - 3} ${y + 5}" fill="none" stroke="#1971c2" stroke-width="3" marker-end="url(#arw)"/>`;
         continue;
       }
       if (m.k === 'br') {
@@ -641,12 +682,14 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
       if (m.cl) cls += ' ' + m.cl;
       if (m.x) cls += ' x';
       if (m.g) cls += ' g';
+      if (m.aux) cls += ' aux';
+      if (m.zx) cls += ' zx';
       if (nw.has(m.id)) cls += ' nw';
       if (late.has(m.id)) cls += ' late';
       h += `<div class="${cls}" style="left:${x}px;top:${y}px">${m.t}</div>`;
     }
     $('markL').innerHTML = h;
-    $('lineL').innerHTML = lines;
+    $('lineL').innerHTML = '<defs><marker id="arw" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1971c2"/></marker></defs>' + lines;
     // 蛍光ペン
     let hh = '';
     const s = cur();
@@ -671,19 +714,36 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
     if (st.phase === 'formula') return { r: 0, c: 9, w: 9, f: true };
     const s = cur();
     if (st.phase !== 'solve' || !s || st.post || s.type !== 'in') return null;
-    return { r: s.box.r, c: s.box.c, w: Math.max(s.box.w, st.inp.length) };
+    return { r: s.box.r, c: s.box.c, w: Math.max(s.box.w, st.inp.replace(/\./g, '').length) };
   }
   function renderBox(shake) {
     const b = boxInfo(), L = $('boxL');
-    if (!b) { L.innerHTML = ''; return; }
+    if (!b) {
+      // 小数点の 候補・けす0の 候補
+      const s = cur();
+      let o = '';
+      if (st.phase === 'solve' && s && !st.post && s.type === 'tap') s.cands.forEach(([r, c]) => { o += `<div class="cand" data-r="${r}" data-c="${c}" style="left:${(c + 1) * C - 21}px;top:${(r + 1) * C - 28}px"><i></i></div>`; });
+      if (st.phase === 'solve' && s && !st.post && s.type === 'zero') s.cands.forEach(([r, c]) => { o += `<div class="zc" data-r="${r}" data-c="${c}" style="left:${c * C + 3}px;top:${r * C + 3}px"></div>`; });
+      L.innerHTML = o; if (shake) L.querySelectorAll('.cand,.zc').forEach(e => e.classList.add('shake'));
+      return;
+    }
     const left = (b.c - b.w + 1) * C, top = b.r * C;
     let inner = '';
+    // 小数点は マスを つかわない（数字の 右下に 点）
+    const lay = (t, off, f) => {
+      let o = '', c = off - 1;
+      for (const ch of t) {
+        if (ch === '.') o += `<div class="bpt" style="left:${(c + 1) * C - 6}px"></div>`;
+        else { c++; o += `<div class="bd${f ? ' f' : ''}" style="left:${c * C}px">${SYM[ch] || ch}</div>`; }
+      }
+      return { o, n: c + 1 };
+    };
     if (b.f) {
-      [...st.f].forEach((ch, i) => { inner += `<div class="bd f" style="left:${i * C}px">${SYM[ch] || ch}</div>`; });
-      if (st.f.length < 9) inner += `<div class="caret" style="left:${st.f.length * C + 12}px"></div>`;
+      const r = lay(st.f, 0, true); inner += r.o;
+      if (r.n < 9) inner += `<div class="caret" style="left:${r.n * C + 12}px"></div>`;
     } else {
-      const t = st.inp;
-      [...t].forEach((ch, i) => { inner += `<div class="bd" style="left:${(b.w - t.length + i) * C}px">${ch}</div>`; });
+      const t = st.inp, n = t.replace(/\./g, '').length;
+      inner += lay(t, b.w - n, false).o;
       if (!t) inner += `<div class="caret" style="left:${(b.w - 1) * C + 12}px"></div>`;
     }
     L.innerHTML = `<div class="box${shake ? ' shake' : ''}" id="theBox" style="left:${left - 4}px;top:${top - 4}px;width:${b.w * C + 8}px;height:${C + 8}px">${inner}</div>`;
@@ -706,6 +766,8 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
     } else if (s) {
       html = st.msg ? `<div class="ng">${rb(st.msg)}</div><div class="sub">${rb(s.say)}</div>` : rb(s.say);
       if (s.type === 'info') btns += `<button class="gb g-green sm" data-act="next">つぎへ<svg viewBox="0 0 32 32"><path d="M13 7l9 9-9 9"/></svg></button>`;
+      else if (s.type === 'choice') btns += s.opts.map(o => `<button class="gb ${o.v ? 'g-orange' : 'g-cyan'} sm ch" data-act="ch" data-v="${o.v}">${o.t}</button>`).join('');
+      if (s.type === 'choice' && s.assist) btns = `<button class="gb g-pink sm ch" data-act="assist">アシスト</button>` + btns;
       else if (s.assist && (s.ask || st.msg)) btns += `<button class="gb g-pink sm" data-act="assist">アシストを みる？</button>`;
     }
     bt.innerHTML = btns;
@@ -718,6 +780,7 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
   $('sayBtns').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.act === 'next') { nextInfo(); }
+    if (b.dataset.act === 'ch') { const s = cur(); if (s && s.type === 'choice' && !st.post) { if (+b.dataset.v === s.exp) correct(s, false); else wrong(s); } }
     if (b.dataset.act === 'assist') { const s = cur(); if (s && s.assist) openAssist(s.assist); }
   });
 
@@ -731,7 +794,8 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
     document.querySelectorAll('#pad .gb').forEach(b => {
       const k = b.dataset.k;
       if ('+-*/'.includes(k)) b.disabled = !opOn;
-      else if (k === 'OK') b.disabled = !(opOn || (st.phase === 'solve' && !st.post && s));
+      else if (k === '.') b.disabled = !(opOn || (numOn && s && s.str));
+      else if (k === 'OK') b.disabled = !(opOn || (st.phase === 'solve' && !st.post && s && (s.type === 'in' || s.type === 'info')));
       else b.disabled = !numOn;
     });
   }
@@ -739,7 +803,7 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
   // ---- テンキー ----
   function buildPad() {
     const K = [['7'], ['8'], ['9'], ['+', '＋', 'op g-orange'], ['4'], ['5'], ['6'], ['-', '−', 'op g-orange'],
-      ['1'], ['2'], ['3'], ['*', '×', 'op g-orange'], ['0', '0', 'w2'], ['BS', '⌫', 'g-gray'], ['/', '÷', 'op g-orange'], ['OK', 'けってい', 'w4 g-green']];
+      ['1'], ['2'], ['3'], ['*', '×', 'op g-orange'], ['0', '0', DEC ? '' : 'w2'], ...(DEC ? [['.', '．', 'pt']] : []), ['BS', '⌫', 'g-gray'], ['/', '÷', 'op g-orange'], ['OK', 'けってい', 'w4 g-green']];
     $('pad').innerHTML = K.map(([k, t, c]) => `<button class="gb ${c && c.includes('g-') ? '' : 'g-pearl'} ${c || ''}" data-k="${k}">${t || k}</button>`).join('');
     $('pad').addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) key(b.dataset.k, true); });
   }
@@ -748,7 +812,7 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
   function key(k, fromPad) {
     if (!$('modal').hidden) return;
     if (st.phase === 'formula') {
-      if (/^\d$/.test(k) || '+-*/'.includes(k)) addF(k);
+      if (/^\d$/.test(k) || '+-*/'.includes(k) || (k === '.' && DEC)) addF(k);
       else if (k === 'BS') { st.f = st.f.slice(0, -1); st.fmsg = null; se('tap'); render(); }
       else if (k === 'OK') confirmFormula();
       return;
@@ -756,13 +820,19 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
     if (st.phase !== 'solve' || st.post) return;
     const s = cur(); if (!s) return;
     if (s.type === 'info') { if (k === 'OK') nextInfo(); return; }
+    if (s.type !== 'in') return;
+    if (k === '.' && s.str) {
+      if (st.inp.includes('.') || !st.inp) { renderBox(true); return; }
+      st.inp += '.'; se('tap'); renderBox(); return;
+    }
     if (/^\d$/.test(k)) {
-      if (st.inp.length >= s.max) { renderBox(true); return; }
+      if (st.inp.replace(/\./g, '').length >= s.max) { renderBox(true); return; }
       st.inp += k; se('tap'); renderBox();
     } else if (k === 'BS') { st.inp = st.inp.slice(0, -1); se('tap'); renderBox(); }
     else if (k === 'OK') check();
   }
   function addF(k) {
+    if (DEC) return addFD(k);
     const m = /^(\d*)([+\-*/]?)(\d*)$/.exec(st.f);
     let [, a, op, b] = m;
     st.fmsg = null;
@@ -780,12 +850,40 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
     }
     st.f = a + op + b; se('tap'); render();
   }
+  function addFD(k) {
+    let [, a, op, b] = /^([\d.]*)([+\-*/]?)([\d.]*)$/.exec(st.f);
+    st.fmsg = null;
+    const nd = x => x.replace('.', '').length, dp = x => (x.includes('.') ? x.split('.')[1].length : 0);
+    const push = (x, lim) => {
+      if (k === '.') {
+        if (x.includes('.')) { st.fmsg = '小数点は 1つだけだよ'; return null; }
+        return (x || '0') + '.';
+      }
+      if (nd(x) >= lim) { st.fmsg = `{数|かず}は ${lim}けたまでだよ`; return null; }
+      if (dp(x) >= H.MAXDEC) { st.fmsg = `小数点より {右|みぎ}は ${H.MAXDEC}けたまでだよ`; return null; }
+      if (x === '0') return k;
+      return x + k;
+    };
+    if ('+-*/'.includes(k)) {
+      if (!a) { st.fmsg = 'さきに {数|かず}を {入|い}れてね'; return fail(); }
+      if (op && b) { st.fmsg = 'きごうは 1つだけだよ'; return fail(); }
+      op = k;
+    } else if (!op) { const x = push(a, H.LIM['+'][0]); if (x == null) return fail(); a = x; }
+    else { const x = push(b, H.LIM[op][1]); if (x == null) { if (!/小数点/.test(st.fmsg)) st.fmsg = `${NAME[op]}の うしろの {数|かず}は ${H.LIM[op][1]}けたまでだよ`; return fail(); } b = x; }
+    st.f = a + op + b; se('tap'); render();
+  }
   function fail() { se('ng'); render(); renderBox(true); shakeChara(); }
 
   function confirmFormula() {
     const p = H.parse(st.f);
     if (!p.ok) { st.fmsg = p.msg; return fail(); }
-    st.prob = p; st.plan = H.build(p, S); st.phase = 'solve'; st.idx = 0; st.inp = ''; st.msg = null; st.post = false; st.fmsg = null;
+    if (DEC && p.op === '/') return divMenu(p);
+    startPlan(p, null);
+  }
+  function startPlan(p, dopt) {
+    const plan = H.build(p, S, dopt);
+    if (plan.ok === false) { st.fmsg = plan.why; return fail(); }
+    st.prob = p; st.dopt = dopt; st.plan = plan; st.phase = 'solve'; st.idx = 0; st.inp = ''; st.msg = null; st.post = false; st.fmsg = null;
     st.f = '';
     se('pop');
     const nw = new Set(st.plan.base.filter(m => m.r > 0).map(m => m.id));
@@ -797,14 +895,14 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
   function check() {
     const s = cur();
     if (!s || s.type !== 'in' || st.post || st.inp === '') { if (s && st.inp === '') renderBox(true); return; }
-    if (+st.inp === s.exp) correct(s, false); else wrong(s, +st.inp);
+    if (s.str ? st.inp === s.exp : +st.inp === s.exp) correct(s, false); else wrong(s, +st.inp);
   }
   function correct(s, revealed) {
     se('ok'); hopChara(); closeAssist();
     const typed = st.inp || String(s.exp);
     const box = boxInfo();
     st.post = true;
-    st.msg = revealed ? `こたえは ${s.exp}だよ` : (s.ok || pick(['せいかい！', 'いいね！', 'そのとおり！', 'ばっちり！']));
+    st.msg = revealed ? (s.rv || `こたえは ${s.exp}だよ`) : (s.ok || pick(['せいかい！', 'いいね！', 'そのとおり！', 'ばっちり！']));
     st.idx++; st.inp = '';
     const nw = new Set((s.add || []).map(m => m.id)), late = new Set();
     if (s.fly) { (s.add || []).forEach(m => { if (m.r === s.fly.to[0] && m.c === s.fly.to[1] && (m.k === 's' || s.fly.from)) late.add(m.id); }); }
@@ -890,7 +988,12 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
   $('bSet').onclick = () => { se('pop'); openSettings(); };
   $('bNew').onclick = () => { se('btn'); resetAll(); };
   $('bStay').onclick = () => { se('btn'); hideEnd(); };
-  $('boxL').addEventListener('click', e => { if (e.target.closest('.box')) { se('tap'); renderBox(); } });
+  $('boxL').addEventListener('click', e => {
+    if (e.target.closest('.box')) { se('tap'); renderBox(); return; }
+    const t = e.target.closest('.cand,.zc'); if (!t) return;
+    const s = cur(); if (!s || st.post || (s.type !== 'tap' && s.type !== 'zero')) return;
+    if (+t.dataset.r === s.exp[0] && +t.dataset.c === s.exp[1]) correct(s, false); else wrong(s);
+  });
 
   // ---- モーダル ----
   let mCb = null;
@@ -898,11 +1001,18 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
   function closeModal() { $('modal').hidden = true; mCb = null; }
   $('modal').addEventListener('click', e => {
     const b = e.target.closest('button');
-    if (!b) { if (e.target.id === 'modal') { se('btn'); closeModal(); } return; }
+    if (!b) { if (e.target.id === 'modal' && !$('mCard').querySelector('[data-d]')) { se('btn'); closeModal(); } return; }
     if (b.dataset.m) { se('btn'); const cb = mCb; closeModal(); if (cb) cb(b.dataset.m); }
+    if (b.dataset.d) {
+      se('btn'); const p = JSON.parse($('mCard').dataset.prob), d = b.dataset.d;
+      if (d === 'back') { closeModal(); render(); }
+      else if (d === 'menu') divMenu(p);
+      else if (d === 'rem' || d === 'round') divMenu(p, d);
+      else { closeModal(); const [mode, k] = d.split(':'); startPlan(p, { mode, k: +k || 0 }); }
+    }
     if (b.dataset.o) {
       se('tap'); const [k, v] = b.dataset.o.split(':'); S[k] = v === 'true' ? true : v === 'false' ? false : v;
-      if (st.plan) { st.plan = H.build(st.prob, S); if (st.phase === 'done') render({}); else render(); }
+      if (st.plan) { st.plan = H.build(st.prob, S, st.dopt); if (st.phase === 'done') render({}); else render(); }
       openSettings();
     }
   });
@@ -916,12 +1026,39 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
       <div class="credit">ひっ算おたすけ君 ver ${VER}　つくった人：のち（まなび堂）</div>`, null);
   }
 
+  // ---- わり算の えらびかた（小数点あり版） ----
+  function divMenu(p, page) {
+    se('pop');
+    const o = H.divOptions(p, S);
+    const why = x => (x.ok ? '' : `<small>${rb(x.why)}</small>`);
+    const PLC = ['{一|いち}の{位|くらい}まで', '1/10の{位|くらい}まで', '1/100の{位|くらい}まで'];
+    let h;
+    if (!page) {
+      const anyRem = o.rem.some(x => x.ok), anyRnd = o.round.some(x => x.ok);
+      h = `<h2>どこまで わる？</h2>
+        <div class="dm">
+          <button class="gb g-green" data-d="end" ${o.end.ok ? '' : 'disabled'}>わりきれるまで${why(o.end)}</button>
+          <button class="gb g-cyan" data-d="rem" ${anyRem ? '' : 'disabled'}>{商|しょう}を □の{位|くらい}まで<br>出して、あまりを 出す</button>
+          <button class="gb g-orange" data-d="round" ${anyRnd ? '' : 'disabled'}>{四捨五入|ししゃごにゅう}で<br>□の{位|くらい}までの がい{数|すう}</button>
+        </div>
+        <div class="row" style="margin-top:22px"><button class="gb g-gray" data-d="back">{式|しき}を なおす</button></div>`;
+    } else {
+      const list = o[page];
+      h = `<h2>${page === 'rem' ? '{商|しょう}は どの{位|くらい}まで？' : 'どの{位|くらい}までの がい{数|すう}？'}</h2>
+        <div class="dm">${list.map((x, k) => `<button class="gb ${page === 'rem' ? 'g-cyan' : 'g-orange'}" data-d="${page}:${k}" ${x.ok ? '' : 'disabled'}>${PLC[k]}${why(x)}</button>`).join('')}</div>
+        <div class="row" style="margin-top:22px"><button class="gb g-gray" data-d="menu">もどる</button></div>`;
+    }
+    modal(rb(h), null);
+    $('mCard').dataset.prob = JSON.stringify(p);
+  }
+
   // ---- アシスト ----
   let lastAssist = null;
   function openAssist(a) {
     lastAssist = a; se('pop');
     const b = boxInfo(), el = $('assist');
-    el.style.top = (b && b.r >= 6 ? 120 : 524) + 'px';
+    const cs = cur(), rr = b ? b.r : (cs && Array.isArray(cs.exp) ? cs.exp[0] : 0);
+    el.style.top = (rr >= 6 ? 120 : 524) + 'px';
     const r = assistView(a);
     $('aTitle').innerHTML = rb(r.title);
     $('aBody').innerHTML = r.body;
@@ -935,6 +1072,7 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
 
   function assistView(a) {
     if (a.type === 'kuku') return kukuView(a);
+    if (DEC_ASSIST[a.type]) return DEC_ASSIST[a.type](a);
     const T = (x, y, s, o) => `<text x="${x}" y="${y}" font-size="${(o && o.fs) || 40}" text-anchor="${(o && o.a) || 'start'}" fill="${(o && o.c) || '#1c2233'}">${s}</text>`;
     const g = (d, inner) => `<g class="st" style="animation-delay:${d}s">${inner}</g>`;
     const R = '#e03131', GR = '#2b8a3e';
@@ -976,6 +1114,109 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
     return { title: 'さくらんぼ けいさん（10から ひこう）', body: svg(s), anim: true };
   }
   const svg = s => `<svg class="asv" viewBox="0 0 1000 236">${s}</svg>`;
+
+  // ---- 小数点あり版の アシスト ----
+  const RED = '#e03131', GRN = '#2b8a3e', BLU = '#1971c2', INK = '#1c2233';
+  const tx = (x, y, s, o) => `<text x="${x}" y="${y}" font-size="${(o && o.fs) || 36}" text-anchor="${(o && o.a) || 'start'}" fill="${(o && o.c) || INK}">${String(s).replace(/\{([^|}]+)\|[^}]+\}/g, '$1')}</text>`;
+  const gd = (d, inner) => `<g class="st" style="animation-delay:${d}s">${inner}</g>`;
+  const dcs = x => (x.includes('.') ? x.split('.')[1].length : 0);
+  // 数を かく。xp＝小数点の x。整数の けたは 左、小数の けたは 右。
+  function numS(str, xp, y, o) {
+    o = o || {}; const fs = o.fs || 60, cw = o.cw || Math.round(fs * .86);
+    const [ip, fp] = str.split('.');
+    let h = '';
+    [...ip].reverse().forEach((ch, j) => { h += tx(xp - cw * (j + .5), y, ch, { fs, a: 'middle', c: o.ci || INK }); });
+    [...(fp || '')].forEach((ch, i) => { h += tx(xp + cw * (i + .5), y, ch, { fs, a: 'middle', c: o.cd || INK }); });
+    if (fp !== undefined && !o.noPt) h += `<circle cx="${xp}" cy="${y - 3}" r="5.5" fill="${o.cp || INK}"/>`;
+    return h;
+  }
+  const lines4 = (arr, d0) => arr.map((t, i) => t ? gd((d0 || .3) + i * 1.1, tx(470, [56, 108, 160, 212][i], t)) : '').join('');
+  const DEC_ASSIST = {
+    align(a) {
+      let h = '';
+      if (a.up) {
+        const [X, PI] = [a.X, a.PI], cw = 52, xp = 60 + cw * (PI + 1);
+        const fp = X.slice(PI + 1);
+        h += numS(X.slice(0, PI + 1) + (fp ? '.' + fp : '.'), xp, 190, { noPt: true, fs: 56, cw });
+        h += `<circle cx="${xp}" cy="187" r="6.5" fill="${RED}"/>`;
+        h += `<line x1="18" y1="110" x2="${60 + cw * (X.length + .5)}" y2="110" stroke="${INK}" stroke-width="3"/>`;
+        h += `<path class="dr" style="animation-delay:.6s" d="M${xp} 172 L${xp} 96" stroke="${RED}" stroke-width="4" stroke-dasharray="6 6" marker-end="url(#ah2)"/>`;
+        h += gd(1.4, `<circle cx="${xp}" cy="88" r="7" fill="${RED}"/>`);
+        h += lines4(['わられる{数|かず}の 小数点の', '{真上|まうえ}に、{商|しょう}の', '小数点を うつよ']);
+      } else {
+        const d = a.d, xp = 250;
+        h += numS(a.a, xp, 64, { fs: 52 }) + numS(a.b, xp, 128, { fs: 52 });
+        h += tx(50, 128, a.op === '+' ? '＋' : '−', { fs: 52, a: 'middle' });
+        h += `<line x1="30" y1="146" x2="400" y2="146" stroke="${INK}" stroke-width="3"/>`;
+        h += `<path class="dr" style="animation-delay:.5s" d="M${xp} 70 L${xp} 186" stroke="${RED}" stroke-width="4" stroke-dasharray="6 6"/>`;
+        h += gd(1.3, `<circle cx="${xp}" cy="196" r="8" fill="${RED}"/>`);
+        h += lines4(['小数点を たてに そろえて', 'かいたから、こたえの', '小数点も {真下|ました}に うつよ']);
+      }
+      return { title: '小数点の ばしょ', body: svg(h + AH2), anim: true };
+    },
+    ptmul(a) {
+      const d = a.dA + a.dB, cw = 48, xr = 400;
+      const right = (str, y, dd, col) => { const ds = str.replace('.', ''); return numS(ds.slice(0, ds.length - dd) + (dd ? '.' + ds.slice(ds.length - dd) : ''), xr - cw * dd, y, { fs: 50, cw, cd: col, noPt: !dd, cp: col }); };
+      let h = right(a.a, 54, a.dA, RED) + right(a.b, 108, a.dB, RED) + tx(60, 108, '×', { fs: 50, a: 'middle' });
+      h += `<line x1="40" y1="124" x2="${xr + 10}" y2="124" stroke="${INK}" stroke-width="3"/>`;
+      const A = a.ans;
+      [...A].forEach((ch, i) => { const k = A.length - 1 - i; h += tx(xr - cw * (k + .5), 178, ch, { fs: 50, a: 'middle' }); });
+      for (let k = 0; k < d; k++) h += gd(2.6 + k * .5, `<circle cx="${xr - cw * (k + .5)}" cy="214" r="15" fill="#ffe3e3" stroke="${RED}" stroke-width="2.5"/>` + tx(xr - cw * (k + .5), 222, k + 1, { fs: 22, a: 'middle', c: RED }));
+      h += gd(2.6 + d * .5 + .3, `<circle cx="${xr - cw * d}" cy="174" r="7" fill="${RED}"/>`);
+      h += lines4([`${a.a} … 小数点の {右|みぎ}に <tspan fill="${RED}">${a.dA}けた</tspan>`, `${a.b} … <tspan fill="${RED}">${a.dB}けた</tspan>`,
+        `あわせて ${a.dA}＋${a.dB}＝<tspan fill="${RED}">${d}けた</tspan>`, `こたえの {右|みぎ}から ${d}つ かぞえる`]);
+      return { title: '小数点より {右|みぎ}の けたを かぞえよう', body: svg(h), anim: true };
+    },
+    shift(a) {
+      const n = a.n, cw = 54;
+      const hop = (str, xL, y, delay) => {
+        const ds = str.replace('.', ''), d0 = dcs(str), ip = ds.length - d0;
+        let h = '';
+        [...ds].forEach((ch, i) => { h += tx(xL + cw * (i + .5), y, ch, { fs: 52, a: 'middle' }); });
+        const x0 = xL + cw * ip, x1 = x0 + cw * n;
+        if (d0) h += `<circle cx="${x0}" cy="${y - 2}" r="6" fill="#adb5c4"/>`;
+        h += `<path class="dr" style="animation-delay:${delay}s" d="M${x0} ${y + 10} Q${(x0 + x1) / 2} ${y + 40} ${x1 - 2} ${y + 12}" fill="none" stroke="${BLU}" stroke-width="3.5" marker-end="url(#ah2)"/>`;
+        h += gd(delay + .6, `<circle cx="${x1}" cy="${y - 2}" r="7" fill="${BLU}"/>`);
+        return h;
+      };
+      const ten = 10 ** n;
+      let h = tx(20, 72, 'わる{数|かず}', { fs: 26 }) + hop(a.b, 150, 76, .4) + tx(20, 178, 'わられる{数|かず}', { fs: 26 }) + hop(a.a, 150, 182, 1.6);
+      h = h.replace(/\{([^|}]+)\|[^}]+\}/g, '$1');
+      h += lines4([`わる{数|かず}を ${ten}{倍|ばい}して {整数|せいすう}に`, `わられる{数|かず}も ${ten}{倍|ばい}`, `→ 小数点を {右|みぎ}に ${n}つ`, '{商|しょう}は かわらないよ']);
+      return { title: '小数点を うごかそう', body: svg(h + AH2), anim: true };
+    },
+    remPt(a) {
+      const cw = 52, X = a.X, xL = 60;
+      let h = '';
+      [...X].forEach((ch, i) => { h += tx(xL + cw * (i + .5), 70, ch, { fs: 50, a: 'middle' }); });
+      const x0 = xL + cw * (a.origPI + 1);
+      h += `<circle cx="${x0}" cy="68" r="7" fill="${RED}"/>`;
+      h += tx(xL - 6, 70, '', {});
+      h += `<path class="dr" style="animation-delay:.5s" d="M${x0} 84 L${x0} 180" stroke="${RED}" stroke-width="4" stroke-dasharray="6 6" marker-end="url(#ah2)"/>`;
+      h += gd(1.3, `<circle cx="${x0}" cy="196" r="8" fill="${RED}"/>` + tx(x0 + 16, 214, 'あまりの 小数点', { fs: 24, c: RED }));
+      h += lines4(['あまりの 小数点は、', 'うごかす {前|まえ}の、もとの', '小数点の {真下|ました}に うつよ']);
+      return { title: 'あまりの 小数点', body: svg(h + AH2), anim: true };
+    },
+    round(a) {
+      let h = '';
+      for (let i = 0; i <= 9; i++) {
+        const x = 30 + i * 42, on = i === a.d, col = i < 5 ? BLU : RED;
+        h += `<rect x="${x}" y="70" width="38" height="56" rx="8" fill="${on ? (i < 5 ? '#d0ebff' : '#ffe3e3') : '#f1f3f5'}" stroke="${on ? col : '#ced4da'}" stroke-width="${on ? 4 : 2}"/>`;
+        h += tx(x + 19, 110, i, { fs: 32, a: 'middle', c: col });
+      }
+      h += tx(30 + 2.5 * 42 - 2, 160, 'きりすて', { fs: 30, a: 'middle', c: BLU }) + tx(30 + 7.5 * 42 - 2, 160, 'きりあげ', { fs: 30, a: 'middle', c: RED });
+      h += gd(.5, `<path d="M${30 + a.d * 42 + 19} 40 l-12 -18 h24 z" fill="${INK}"/>`);
+      h += lines4(['0・1・2・3・4 → きりすて', '5・6・7・8・9 → きりあげ', 'きりあげると、1つ {上|うえ}の', '{位|くらい}が 1 ふえるよ']);
+      return { title: '{四捨五入|ししゃごにゅう}', body: svg(h), anim: true };
+    },
+    zero() {
+      let h = numS('2.50', 110, 110, { fs: 60, cw: 50 }) + tx(260, 110, '＝', { fs: 56, a: 'middle' }) + numS('2.5', 360, 110, { fs: 60, cw: 50 });
+      h += gd(.8, `<line x1="${110 + 50 * 1.5 - 14}" y1="124" x2="${110 + 50 * 1.5 + 14}" y2="70" stroke="${RED}" stroke-width="5" stroke-linecap="round"/>`);
+      h += lines4(['小数の いちばん {右|みぎ}の 0は、', 'あっても なくても おなじ', '大きさ。だから ななめ線で', 'けしておくよ']);
+      return { title: 'いらない 0', body: svg(h), anim: true };
+    },
+  };
+  const AH2 = `<defs><marker id="ah2" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="${INK}"/></marker></defs>`;
   function kukuView(a) {
     const n = a.n;
     let h = `<div class="kuku${a.c || a.div != null ? ' n' : ''}">`;
@@ -1009,7 +1250,7 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
   const hopChara = () => anim('hop', 600), shakeChara = () => anim('shake', 550), jumpChara = () => anim('jump', 1200);
 
   function hanamaru() {
-    const m = [...marksAt(st.idx, false).values()].filter(x => x.ans && !x.g);
+    const m = [...marksAt(st.idx, false).values()].filter(x => st.plan.hana === 'fin' ? (x.k === 'f' && x.u && x.r === 0) : (x.ans && !x.g && x.k === 'd'));
     if (!m.length) return;
     const c1 = Math.min(...m.map(x => x.c)), c2 = Math.max(...m.map(x => x.c)), r = m[0].r;
     const cx = (c1 + c2 + 1) / 2 * C, cy = (r + .5) * C;
@@ -1058,6 +1299,7 @@ ruby rt{font-size:.36em;letter-spacing:0;font-weight:700}
     else if (e.key === '-') k = '-';
     else if (e.key === '*' || e.key === 'x' || e.key === 'X') k = '*';
     else if (e.key === '/') k = '/';
+    else if (e.key === '.') k = '.';
     else if (e.key === 'Backspace' || e.key === 'Delete') k = 'BS';
     else if (e.key === 'Enter' || e.key === '=') k = 'OK';
     if (k) { e.preventDefault(); key(k); }

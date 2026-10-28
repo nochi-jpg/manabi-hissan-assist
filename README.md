@@ -4,8 +4,9 @@
 
 ## つかいかた
 - `src/index.html` をブラウザで開く（素材は `src/assets/`）
-- GitHub版：https://nochi-jpg.github.io/manabi-hissan-assist/ （リポジトリの `index.html`）
-- Canva版：`dist/hissan-otasuke-canva.html`（画像・音を 中に入れた 1ファイル）
+- 整数版　GitHub：https://nochi-jpg.github.io/manabi-hissan-assist/ （`index.html`）／Canva：`dist/hissan-otasuke-canva.html`
+- 小数点あり版　GitHub：https://nochi-jpg.github.io/manabi-hissan-assist/shousu.html （`shousu.html`）／Canva：`dist/hissan-otasuke-shousu-canva.html`
+- 元のファイル：`src/index.html`（整数版）・`src/shousu.html`（小数点あり版）。画面は `src/app.js` を 2つで 共通に つかう
 - どちらも `python3 tools/build.py` で 作りなおす（`src/` を 直したら かならず 実行）
 
 ## しよう（決まったこと）
@@ -16,9 +17,22 @@
 - もどす＝1手もどる、すすむ＝その手の こたえを見て すすむ
 - セーブなし
 
+## 小数点あり版（ver 1.0.0）
+- 4〜5年：小数の たし算・ひき算、小数×整数・小数×小数、小数÷整数・小数÷小数
+- けた：数字は 4けたまで（かける数は 3けた・わる数は 3けた）、小数点より 右は 2けたまで
+- 小数点は マスを つかわず、数字の 右下の 線の上に うつ。子どもが 赤い 候補を タップして うつ
+- 答えの いらない 0 は、子どもが タップして ななめ線で けす（小数の ぶぶんが ぜんぶ 0 なら 小数点も けす）
+- ひき算で けたが たりないときは 0 を 足して そろえる（例：5 → 5.00）
+- かけ算は 右を そろえて 計算 → 小数点より 右の けたを かぞえて 小数点（けたが たりなければ 0 を 足す）
+- わり算は 式を 決めたあとに 3つから えらぶ：わりきれるまで／商を □の位まで（あまり）／四捨五入で □の位まで（一の位・1/10・1/100）。ノートに 入らない・わりきれない えらびかたは 灰色
+- ÷小数は わる数・わられる数の 小数点を タップで うごかす（青い矢印）。商の 小数点・あまりの 小数点も タップ
+- 四捨五入は「きりすて／きりあげ」を えらぶ → 式の行の ≒ の あとに がい数を 入れる
+- アシスト：小数点の 場所・けたを かぞえる・小数点を うごかす・四捨五入・いらない0（まちがえると 自動で 出る）。九九の表は ボタンで 出る
+
 ## テスト
-- `node tools/logic_test.js` … 6000問以上で 答え・はみ出し・重なりを しらべる
-- `python3 tools/shots.py 出力フォルダ` … スクリーンショット（1366×650）
+- `node tools/logic_test.js` … 整数版 6000問以上で 答え・はみ出し・重なりを しらべる
+- `node tools/dec_test.js` … 小数点あり版 8000問以上（ノートの 答え・小数点・あまり・式の行）
+- `python3 tools/shots.py 出力フォルダ` / `python3 tools/shots_dec.py 出力フォルダ` … スクリーンショット（1366×650）
 
 ## 素材
 - キャラクター：のち（まなび堂）の絵（まなびバトルの all_cute_1 を左右反転）
