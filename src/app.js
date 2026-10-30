@@ -448,7 +448,7 @@
       <div class="opt"><div class="lbl">くりさがりを かく<ruby>場所<rt>ばしょ</rt></ruby></div>${seg('borrow', [['up', 'うえの だん'], ['side', '数の みぎうえ']])}</div>
       <div class="opt"><div class="lbl">こうかおん</div>${seg('sound', [[true, 'あり'], [false, 'なし']])}</div>
       <div class="row" style="margin-top:28px"><button class="gb g-green" data-m="close">とじる</button></div>
-      <div class="credit">ひっ算おたすけ君 ver ${VER}　つくった人：のち（まなび堂）</div>`, null);
+      <div class="credit">ひっ算おたすけ君 ver ${VER}　つくった人：K.nom</div>`, null);
   }
 
   // ---- わり算の えらびかた（小数点あり版） ----

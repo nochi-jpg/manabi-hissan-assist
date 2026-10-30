@@ -39,5 +39,5 @@
 - `python3 tools/shots.py 出力フォルダ` / `python3 tools/shots_dec.py 出力フォルダ` … スクリーンショット（1366×650）
 
 ## 素材
-- キャラクター：のち（まなび堂）の絵（まなびバトルの all_cute_1 を左右反転）
+- キャラクター：K.nomの絵（まなびバトルの all_cute_1 を左右反転）
 - 効果音の ファイル名と 役割は `src/app.js` の `SE_SRC`

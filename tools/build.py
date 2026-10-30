@@ -16,8 +16,8 @@ def build(page, outs):
         out = os.path.join(R, out)
         os.makedirs(os.path.dirname(out), exist_ok=True)
         h = html
-        # Canva版は 作者名を K.nomura に（GitHub版は そのまま）
-        if out.endswith('-canva.html'): h = h.replace('のち（まなび堂）', 'K.nomura')
+        # Canva版は 作者名を K.nom に（GitHub版は そのまま）
+        if out.endswith('-canva.html'): h = h.replace('K.nom', 'K.nom')
         open(out, 'w', encoding='utf-8').write(h)
         print(os.path.relpath(out, R), f'{os.path.getsize(out)/1024:.0f}KB')
 
