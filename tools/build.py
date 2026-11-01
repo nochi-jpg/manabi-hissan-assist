@@ -9,7 +9,7 @@ def data(p):
 def build(page, outs):
     html = src(page)
     html = html.replace('<link rel="stylesheet" href="style.css">', '<style>\n' + src('style.css') + '</style>')
-    for js in ['logic.js', 'logic-dec.js', 'app.js']:
+    for js in ['logic.js', 'logic-dec.js', 'drill.js', 'app.js']:
         html = html.replace(f'<script src="{js}"></script>', '<script>\n' + src(js) + '</script>')
     html = re.sub(r"assets/[\w/]+\.(?:png|mp3)", lambda m: data(m.group(0)), html)
     for out in outs:

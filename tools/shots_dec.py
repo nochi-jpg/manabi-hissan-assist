@@ -7,7 +7,7 @@ errs = []
 with sync_playwright() as p:
     b = p.chromium.launch(); pg = b.new_page(viewport={'width': 1366, 'height': 650})
     pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('console', lambda m: m.type == 'error' and errs.append(m.text))
-    pg.goto(src); pg.wait_for_timeout(400)
+    pg.goto(src); pg.wait_for_timeout(400); pg.click('[data-h=help]')
     J = pg.evaluate
     def shot(n, w=400): pg.wait_for_timeout(w); pg.screenshot(path=f'{out}/{n}.png')
     def typ(s):

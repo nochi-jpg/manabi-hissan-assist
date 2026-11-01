@@ -9,7 +9,7 @@
 <body>
 <div id="stage">
   <header id="top">
-    <h1 class="ttl">ひっ<ruby>算<rt>さん</rt></ruby>おたすけ<ruby>君<rt>くん</rt></ruby><span class="badge"><ruby>小数点<rt>しょうすうてん</rt></ruby>あり<ruby>版<rt>ばん</rt></ruby></span></h1>
+    <h1 class="ttl">ひっ<ruby>算<rt>さん</rt></ruby>おたすけ<ruby>君<rt>くん</rt></ruby><span class="badge" id="verBadge"><ruby>小数点<rt>しょうすうてん</rt></ruby>あり<ruby>版<rt>ばん</rt></ruby></span><span class="badge prog" id="prog" hidden></span></h1>
     <div class="hbtns">
       <button class="gb g-cyan" id="bBack"><svg viewBox="0 0 32 32"><path d="M19 7 10 16l9 9" /></svg>もどす</button>
       <button class="gb g-green" id="bFwd">すすむ<svg viewBox="0 0 32 32"><path d="M13 7l9 9-9 9" /></svg></button>
@@ -33,7 +33,7 @@
   <div id="charaW"><img id="chara" src="assets/chara.png" alt=""></div>
   <div id="pad"></div>
   <div id="endCard" hidden>
-    <div class="etxt">つぎの <ruby>式<rt>しき</rt></ruby>を<br><ruby>入<rt>い</rt></ruby>れる？</div>
+    <div class="etxt" id="eTxt">つぎの <ruby>式<rt>しき</rt></ruby>を<br><ruby>入<rt>い</rt></ruby>れる？</div>
     <button class="gb g-green" id="bNew">あたらしい<ruby>式<rt>しき</rt></ruby></button>
     <button class="gb g-gray" id="bStay">このまま みる</button>
   </div>
@@ -47,11 +47,21 @@
     <div id="aBody"></div>
   </div>
 
+  <div id="home" hidden>
+    <div class="hTtl" id="hTtl"></div>
+    <div class="hQ" id="hQ"></div>
+    <div class="hBtns" id="hBtns"></div>
+    <button class="gb g-gray" id="hBack"><svg viewBox="0 0 32 32"><path d="M19 7 10 16l9 9" /></svg>もどる</button>
+    <img class="hChara" src="assets/chara.png" alt="">
+    <div class="hCredit">つくった<ruby>人<rt>ひと</rt></ruby>：K.nom</div>
+  </div>
+
   <div id="modal" hidden><div class="card" id="mCard"></div></div>
   <div id="confL"></div>
 </div>
 <script src="logic.js"></script>
 <script src="logic-dec.js"></script>
+<script src="drill.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

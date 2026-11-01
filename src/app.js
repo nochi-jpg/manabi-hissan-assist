@@ -21,6 +21,11 @@
   const S = { carry: 'up', borrow: 'up', sound: true };
   const st = { phase: 'formula', f: '', fmsg: null, prob: null, plan: null, idx: 0, inp: '', post: false, msg: null, timer: null };
   const cur = () => (st.plan && st.idx < st.plan.steps.length ? st.plan.steps[st.idx] : null);
+  // 練習問題モード
+  const G = { mode: 'help', grade: null, unit: null, amode: 'always', n: 5, queue: [], qi: 0, res: [], curMiss: false };
+  const drill = () => G.mode === 'drill';
+  // 「まちがえたら アシスト」で、まだ まちがえていない手順は 案内を かくす
+  const quiet = s => drill() && G.amode === 'miss' && !st.missed && s && s.type !== 'info';
   const SYM = { '+': '＋', '-': '−', '*': '×', '/': '÷' };
   const NAME = { '+': 'たし{算|ざん}', '-': 'ひき{算|ざん}', '*': 'かけ{算|ざん}', '/': 'わり{算|ざん}' };
 
@@ -118,7 +123,7 @@
     // 蛍光ペン
     let hh = '';
     const s = cur();
-    if (st.phase === 'solve' && s && !st.post) {
+    if (st.phase === 'solve' && s && !st.post && !quiet(s)) {
       const cells = (s.hl || []).filter(([r, c]) => r > 0 && (r !== 2 || [...marks.values()].some(m => m.r === 2 && m.c === c) || st.prob.op === '/')).slice().sort((p, q) => p[1] - q[1] || p[0] - q[0]);
       const runs = [];
       cells.forEach(([r, c]) => {
@@ -189,11 +194,14 @@
     } else if (st.post) {
       html = `<div class="ok">${rb(st.msg || 'せいかい！')}</div>`;
     } else if (s) {
-      html = st.msg ? `<div class="ng">${rb(st.msg)}</div><div class="sub">${rb(s.say)}</div>` : rb(s.say);
+      const QS = { in: s.str ? '≒の あとに<br>こたえを かこう' : '{赤|あか}い わくに<br>{数|かず}を かこう', tap: '小数点を うつ ところを<br>タップしよう',
+        zero: 'いらない 0を<br>タップしよう', choice: '{四捨五入|ししゃごにゅう}は<br>きりすて？ きりあげ？' };
+      const say = quiet(s) ? QS[s.type] || s.say : s.say;
+      html = st.msg ? `<div class="ng">${rb(st.msg)}</div><div class="sub">${rb(say)}</div>` : rb(say);
       if (s.type === 'info') btns += `<button class="gb g-green sm" data-act="next">つぎへ<svg viewBox="0 0 32 32"><path d="M13 7l9 9-9 9"/></svg></button>`;
       else if (s.type === 'choice') btns += s.opts.map(o => `<button class="gb ${o.v ? 'g-orange' : 'g-cyan'} sm ch" data-act="ch" data-v="${o.v}">${o.t}</button>`).join('');
-      if (s.type === 'choice' && s.assist) btns = `<button class="gb g-pink sm ch" data-act="assist">アシスト</button>` + btns;
-      else if (s.assist && (s.ask || st.msg)) btns += `<button class="gb g-pink sm" data-act="assist">アシストを みる？</button>`;
+      if (s.type === 'choice' && s.assist && !quiet(s)) btns = `<button class="gb g-pink sm ch" data-act="assist">アシスト</button>` + btns;
+      else if (s.assist && (s.ask || st.msg) && !quiet(s)) btns += `<button class="gb g-pink sm" data-act="assist">アシストを みる？</button>`;
     }
     bt.innerHTML = btns;
     el.classList.toggle('btns', !!btns);
@@ -235,7 +243,7 @@
 
   // ---- 入力 ----
   function key(k, fromPad) {
-    if (!$('modal').hidden) return;
+    if (!$('modal').hidden || !$('home').hidden) return;
     if (st.phase === 'formula') {
       if (/^\d$/.test(k) || '+-*/'.includes(k) || (k === '.' && DEC)) addF(k);
       else if (k === 'BS') { st.f = st.f.slice(0, -1); st.fmsg = null; se('tap'); render(); }
@@ -305,9 +313,11 @@
     if (DEC && p.op === '/') return divMenu(p);
     startPlan(p, null);
   }
-  function startPlan(p, dopt) {
+  function startPlan(p, dopt, note) {
     const plan = H.build(p, S, dopt);
     if (plan.ok === false) { st.fmsg = plan.why; return fail(); }
+    if (note) plan.steps.unshift({ type: 'info', say: note, hl: [] });
+    st.note = note || null; st.missed = false;
     st.prob = p; st.dopt = dopt; st.plan = plan; st.phase = 'solve'; st.idx = 0; st.inp = ''; st.msg = null; st.post = false; st.fmsg = null;
     st.f = '';
     se('pop');
@@ -343,12 +353,13 @@
   function afterCorrect() {
     clearTimeout(st.timer); st.timer = null;
     if (!st.post) return;
-    st.post = false; st.msg = null;
+    st.post = false; st.msg = null; st.missed = false;
     if (st.idx >= st.plan.steps.length) return finish();
     const nw = new Set(); ap2(nw, cur());
     render({ nw });
   }
   function wrong(s, v) {
+    st.missed = true; G.curMiss = true;
     se('ng'); shakeChara();
     let m = 'もういちど {考|かんが}えて みよう';
     if (s.wr) {
@@ -363,7 +374,7 @@
   }
   function nextInfo() {
     const s = cur(); if (!s || s.type !== 'info') return;
-    se('btn'); st.idx++; st.msg = null;
+    se('btn'); st.idx++; st.msg = null; st.missed = false;
     if (st.idx >= st.plan.steps.length) return finish();
     const nw = new Set(); ap2(nw, cur());
     render({ nw });
@@ -374,7 +385,20 @@
     se('clear'); setTimeout(() => se('cheer'), 500);
     render({ nw: new Set(st.plan.fin.map(m => m.id)) });
     hanamaru(); confetti(); jumpChara();
-    st.timer = setTimeout(() => { $('endCard').hidden = false; $('pad').hidden = true; }, 1600);
+    st.timer = setTimeout(showEnd, 1600);
+  }
+  function showEnd() {
+    if (drill()) {
+      const last = G.qi >= G.queue.length - 1;
+      $('eTxt').innerHTML = `${G.qi + 1}もんめ<br>おわり！` + (G.curMiss ? '' : '<br><span class="nomiss">ノーミス！</span>');
+      $('bNew').innerHTML = last ? 'けっかを みる' : 'つぎの もんだい';
+      $('bStay').style.display = 'none';
+    } else {
+      $('eTxt').innerHTML = rb('つぎの {式|しき}を<br>{入|い}れる？');
+      $('bNew').innerHTML = rb('あたらしい{式|しき}');
+      $('bStay').style.display = '';
+    }
+    $('endCard').hidden = false; $('pad').hidden = true;
   }
 
   // ---- ボタン ----
@@ -383,7 +407,7 @@
     if (st.phase === 'formula') return;
     if (st.phase === 'done') { st.phase = 'solve'; st.idx = st.plan.steps.length - 1; }
     else if (st.post) { st.post = false; st.idx--; }
-    else if (st.idx === 0) { st.phase = 'formula'; st.f = st.plan.formula.replace(/[＋−×÷]/g, c => ({ '＋': '+', '−': '-', '×': '*', '÷': '/' })[c]); st.plan = null; }
+    else if (st.idx === 0) { if (drill()) return render(); st.phase = 'formula'; st.f = st.plan.formula.replace(/[＋−×÷]/g, c => ({ '＋': '+', '−': '-', '×': '*', '÷': '/' })[c]); st.plan = null; }
     else st.idx--;
     st.inp = ''; st.msg = null; render();
   }
@@ -393,6 +417,7 @@
     if (st.post) return afterCorrect();
     const s = cur(); if (!s) return;
     if (s.type === 'info') return nextInfo();
+    G.curMiss = true;
     st.inp = String(s.exp); correct(s, true);
   }
   function resetAll() {
@@ -406,12 +431,21 @@
   $('bFwd').onclick = () => { se('btn'); fwd(); };
   $('bReset').onclick = () => {
     se('pop');
+    if (drill()) return modal(`<h2>やりなおす？</h2><p>この もんだいを はじめから やりなおすよ</p>
+      <div class="row"><button class="gb g-orange" data-m="yes">やりなおす</button><button class="gb g-gray" data-m="no">やめる</button></div>`,
+      a => { if (a === 'yes') startQ(true); });
     modal(`<h2>リセットする？</h2><p>いまの けいさんは きえるよ</p>
       <div class="row"><button class="gb g-orange" data-m="yes">リセットする</button><button class="gb g-gray" data-m="no">やめる</button></div>`,
       a => { if (a === 'yes') resetAll(); });
   };
   $('bSet').onclick = () => { se('pop'); openSettings(); };
-  $('bNew').onclick = () => { se('btn'); resetAll(); };
+  $('bNew').onclick = () => {
+    se('btn');
+    if (!drill()) return resetAll();
+    G.res.push(!G.curMiss);
+    if (G.qi >= G.queue.length - 1) return showResult();
+    G.qi++; startQ();
+  };
   $('bStay').onclick = () => { se('btn'); hideEnd(); };
   $('boxL').addEventListener('click', e => {
     if (e.target.closest('.box')) { se('tap'); renderBox(); return; }
@@ -422,11 +456,12 @@
 
   // ---- モーダル ----
   let mCb = null;
-  function modal(html, cb) { $('mCard').innerHTML = html; $('modal').hidden = false; mCb = cb; }
-  function closeModal() { $('modal').hidden = true; mCb = null; }
+  let mLock = false;
+  function modal(html, cb, lock) { $('mCard').innerHTML = html; $('modal').hidden = false; mCb = cb; mLock = !!lock; }
+  function closeModal() { $('modal').hidden = true; mCb = null; mLock = false; }
   $('modal').addEventListener('click', e => {
     const b = e.target.closest('button');
-    if (!b) { if (e.target.id === 'modal' && !$('mCard').querySelector('[data-d]')) { se('btn'); closeModal(); } return; }
+    if (!b) { if (e.target.id === 'modal' && !mLock && !$('mCard').querySelector('[data-d]')) { se('btn'); closeModal(); } return; }
     if (b.dataset.m) { se('btn'); const cb = mCb; closeModal(); if (cb) cb(b.dataset.m); }
     if (b.dataset.d) {
       se('btn'); const p = JSON.parse($('mCard').dataset.prob), d = b.dataset.d;
@@ -437,7 +472,7 @@
     }
     if (b.dataset.o) {
       se('tap'); const [k, v] = b.dataset.o.split(':'); S[k] = v === 'true' ? true : v === 'false' ? false : v;
-      if (st.plan) { st.plan = H.build(st.prob, S, st.dopt); if (st.phase === 'done') render({}); else render(); }
+      if (st.plan) { st.plan = H.build(st.prob, S, st.dopt); if (st.note) st.plan.steps.unshift({ type: 'info', say: st.note, hl: [] }); if (st.phase === 'done') render({}); else render(); }
       openSettings();
     }
   });
@@ -447,8 +482,10 @@
       <div class="opt"><div class="lbl">くりあがりを かく<ruby>場所<rt>ばしょ</rt></ruby></div>${seg('carry', [['up', 'うえの だん'], ['down', 'こたえの マス']])}</div>
       <div class="opt"><div class="lbl">くりさがりを かく<ruby>場所<rt>ばしょ</rt></ruby></div>${seg('borrow', [['up', 'うえの だん'], ['side', '数の みぎうえ']])}</div>
       <div class="opt"><div class="lbl">こうかおん</div>${seg('sound', [[true, 'あり'], [false, 'なし']])}</div>
-      <div class="row" style="margin-top:28px"><button class="gb g-green" data-m="close">とじる</button></div>
-      <div class="credit">ひっ算おたすけ君 ver ${VER}　つくった人：K.nom</div>`, null);
+      <div class="row" style="margin-top:28px"><button class="gb g-green" data-m="close">とじる</button><button class="gb g-gray" data-m="title">タイトルへ</button></div>
+      <div class="credit">ひっ算おたすけ君 ver ${VER}　つくった人：K.nom</div>`, a => {
+      if (a === 'title') { se('pop'); modal(`<h2>タイトルに もどる？</h2><p>いまの けいさんは きえるよ</p><div class="row"><button class="gb g-orange" data-m="yes">もどる</button><button class="gb g-gray" data-m="no">やめる</button></div>`, x => { if (x === 'yes') showHome('mode'); }); }
+    });
   }
 
   // ---- わり算の えらびかた（小数点あり版） ----
@@ -731,7 +768,93 @@
   });
 
   // ---- はじめ ----
-  window.__hissan = { st, S, key, fwd, back, cur };
-  drawGrid(); buildPad(); fit(); render();
+  // ---- タイトル・練習問題モード ----
+  const UNITS = DEC ? window.DRILL.DEC : window.DRILL.INT;
+  const GSUM = DEC ? { 4: '{小数|しょうすう}の たし{算|ざん}・ひき{算|ざん}、×÷{整数|せいすう}', 5: '×{小数|しょうすう}、÷{小数|しょうすう}' }
+    : { 2: '2けたの たし{算|ざん}・ひき{算|ざん}', 3: '3・4けたの たし{算|ざん}・ひき{算|ざん}、かけ{算|ざん}', 4: 'わり{算|ざん}' };
+  const AMODE = { always: 'さいしょから', miss: 'まちがえたら' };
+  let hPage = 'mode';
+  function showHome(page) {
+    clearTimeout(st.timer); st.timer = null; closeAssist(); hideEnd(); closeModal(); $('fxL').innerHTML = ''; $('flyL').innerHTML = '';
+    Object.assign(st, { phase: 'formula', f: '', fmsg: null, prob: null, plan: null, idx: 0, inp: '', post: false, msg: null, note: null });
+    render();
+    hPage = page; $('home').hidden = false;
+    const B = $('hBtns'), Q = $('hQ');
+    const btn = (h, c, t, sm) => `<button class="gb ${c}" data-h="${h}"><span class="mt">${t}</span><small>${sm}</small></button>`;
+    if (page === 'mode') {
+      Q.innerHTML = 'どちらで やる？'; B.className = 'hBtns c1';
+      B.innerHTML = btn('help', 'g-orange', 'ひっ{算|さん}おたすけモード', '{教科書|きょうかしょ}や ドリルの もんだいを おたすけ')
+        + btn('drill', 'g-cyan', '{練習|れんしゅう}{問題|もんだい}モード', '{学年|がくねん}・{単元|たんげん}に あわせた もんだいに ちょうせん');
+    } else if (page === 'grade') {
+      Q.innerHTML = 'なん{年生|ねんせい}の もんだいに する？'; B.className = 'hBtns c1' + (Object.keys(UNITS).length === 3 ? ' n3' : '');
+      B.innerHTML = Object.keys(UNITS).map((g, i) => btn('g:' + g, ['g-green', 'g-cyan', 'g-orange'][i], `{小学|しょうがく}${g}{年生|ねんせい}`, GSUM[g])).join('');
+    } else if (page === 'unit') {
+      const list = UNITS[G.grade];
+      Q.innerHTML = `どの {単元|たんげん}に する？（{小学|しょうがく}${G.grade}{年生|ねんせい}）`;
+      B.className = 'hBtns c2 u' + list.length;
+      B.innerHTML = list.map((u, i) => btn('u:' + i, u.c, u.t, 'れい：' + u.ex)).join('');
+    } else if (page === 'assist') {
+      Q.innerHTML = 'アシストは どうする？'; B.className = 'hBtns c1';
+      B.innerHTML = btn('a:always', 'g-green', 'アシスト さいしょから', 'キャラが 1つずつ {教|おし}えてくれる')
+        + btn('a:miss', 'g-pink', 'アシスト まちがえたら', 'まずは じぶんで。まちがえたら {教|おし}えてくれる');
+    } else {
+      Q.innerHTML = 'なんもん やる？'; B.className = 'hBtns c3';
+      B.innerHTML = [3, 5, 10].map((n, i) => btn('n:' + n, ['g-green', 'g-cyan', 'g-orange'][i], `{全|ぜん}${n}もん`, ['さくっと', 'ちょうどいい', 'がっつり'][i])).join('');
+    }
+    Q.innerHTML = rb(Q.innerHTML); B.innerHTML = rb(B.innerHTML);
+    $('hBack').hidden = page === 'mode';
+    renderTop();
+  }
+  $('hBtns').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    se('btn');
+    const h = b.dataset.h;
+    if (h === 'help') { G.mode = 'help'; $('home').hidden = true; resetAll(); renderTop(); return; }
+    if (h === 'drill') { G.mode = 'drill'; return showHome('grade'); }
+    if (h.startsWith('g:')) { G.grade = h.slice(2); return showHome('unit'); }
+    if (h.startsWith('u:')) { G.unit = UNITS[G.grade][+h.slice(2)]; return showHome('assist'); }
+    if (h.startsWith('a:')) { G.amode = h.slice(2); return showHome('count'); }
+    if (h.startsWith('n:')) { G.n = +h.slice(2); return startDrill(); }
+  });
+  $('hBack').onclick = () => { se('btn'); showHome({ grade: 'mode', unit: 'grade', assist: 'unit', count: 'assist' }[hPage] || 'mode'); };
+
+  function startDrill() {
+    Object.assign(G, { mode: 'drill', queue: window.DRILL.make(H, G.unit, G.n, S), qi: 0, res: [] });
+    G.n = G.queue.length;
+    $('home').hidden = true; startQ();
+  }
+  function startQ(keepMiss) {
+    clearTimeout(st.timer); st.timer = null; closeAssist(); hideEnd(); $('fxL').innerHTML = ''; $('flyL').innerHTML = '';
+    if (!keepMiss) G.curMiss = false;
+    const q = G.queue[G.qi];
+    startPlan(q.p, q.opt, q.note);
+    renderTop();
+  }
+  function renderTop() {
+    const p = $('prog'), on = drill() && $('home').hidden && !!st.plan;
+    p.hidden = !on; p.textContent = `${G.qi + 1}／${G.n}もん`;
+    const vb = $('verBadge'); if (vb) vb.hidden = on;
+  }
+  function showResult() {
+    closeAssist(); hideEnd();
+    se('clear'); setTimeout(() => se('cheer'), 500); confetti(); jumpChara();
+    const N = G.res.length, n = G.res.filter(x => x).length;
+    const msg = n === N ? 'ぜんぶ ノーミス！ すごい！<br>さいごまで よく がんばったね'
+      : n * 10 >= N * 6 ? 'ノーミスが いっぱい！<br>よく がんばったね'
+      : 'さいごまで やりきったね！<br>まちがえても あきらめずに できたのが すごいよ';
+    modal(rb(`<h2>けっか</h2>
+      <div class="rsInfo"><span>{小学|しょうがく}${G.grade}{年生|ねんせい}</span><span>${G.unit.t}</span><span>アシスト：${AMODE[G.amode]}</span></div>
+      <div class="rsLbl">ノーミスで できた もんだい</div>
+      <div class="score">${n}<small>／${N}もん</small></div>
+      <div class="rsRow">${G.res.map(ok => `<span class="${ok ? 'o' : 'x'}">${ok ? '○' : '△'}</span>`).join('')}</div>
+      <p class="rsMsg">${msg}</p>
+      <div class="row r3"><button class="gb g-green" data-m="again">もういちど</button><button class="gb g-cyan" data-m="unit">{単元|たんげん}を かえる</button><button class="gb g-gray" data-m="title">タイトルへ</button></div>`),
+      a => { if (a === 'again') startDrill(); else if (a === 'unit') showHome('unit'); else showHome('mode'); }, true);
+  }
+
+  window.__hissan = { st, S, G, key, fwd, back, cur };
+  drawGrid(); buildPad(); fit();
+  $('hTtl').innerHTML = 'ひっ<ruby>算<rt>さん</rt></ruby>おたすけ<ruby>君<rt>くん</rt></ruby>' + (DEC ? '<span class="hBadge"><ruby>小数点<rt>しょうすうてん</rt></ruby>あり<ruby>版<rt>ばん</rt></ruby></span>' : '');
+  showHome('mode');
   const v = document.createElement('div'); v.className = 'ver'; v.textContent = 'ver ' + VER; $('stage').appendChild(v);
 })();
